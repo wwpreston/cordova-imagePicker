@@ -30,6 +30,7 @@
 
 package com.synconset;
 
+import java.io.ByteArrayOutputStream;
 import java.net.URI;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -91,6 +92,7 @@ public class MultiImageChooserActivity extends Activity implements OnItemClickLi
     public static final String WIDTH_KEY = "WIDTH";
     public static final String HEIGHT_KEY = "HEIGHT";
     public static final String QUALITY_KEY = "QUALITY";
+    public static final String FILESIZE_KEY = "FILESIZE";
 
     private ImageAdapter ia;
 
@@ -111,6 +113,7 @@ public class MultiImageChooserActivity extends Activity implements OnItemClickLi
     private int desiredWidth;
     private int desiredHeight;
     private int quality;
+    private int maxFilesize;
 
     private GridView gridView;
 
@@ -171,6 +174,7 @@ public class MultiImageChooserActivity extends Activity implements OnItemClickLi
         desiredWidth = getIntent().getIntExtra(WIDTH_KEY, 0);
         desiredHeight = getIntent().getIntExtra(HEIGHT_KEY, 0);
         quality = getIntent().getIntExtra(QUALITY_KEY, 0);
+		maxFilesize = getIntent().getIntExtra(FILESIZE_KEY, 0);
         maxImageCount = maxImages;
 
         Display display = getWindowManager().getDefaultDisplay();
@@ -662,15 +666,43 @@ public class MultiImageChooserActivity extends Activity implements OnItemClickLi
             File file = File.createTempFile("tmp_" + name, ext);
             OutputStream outStream = new FileOutputStream(file);
             if (ext.compareToIgnoreCase(".png") == 0) {
-                bmp.compress(Bitmap.CompressFormat.PNG, quality, outStream);
+                writeImageToStreamAfterTestingFileSize(bmp, Bitmap.CompressFormat.PNG, quality, outStream);
             } else {
-                bmp.compress(Bitmap.CompressFormat.JPEG, quality, outStream);
+                writeImageToStreamAfterTestingFileSize(bmp, Bitmap.CompressFormat.JPEG, quality, outStream);
             }
             outStream.flush();
             outStream.close();
             return file;
         }
-    
+		
+		/* This function not included in copyright notice */
+		private void writeImageToStreamAfterTestingFileSize(Bitmap bmp, Bitmap.CompressFormat format, int quality,  OutputStream outStream) {
+			int currentDataSize = Integer.MAX_VALUE;
+			float scaleFactor = 1f;
+			float scaleFactorDecrease = 0.1f;
+			Bitmap scaledBmp = bmp;
+			while (maxFilesize > 0 && currentDataSize > maxFilesize)
+			{
+				if (currentDataSize != Integer.MAX_VALUE)
+				{
+					if (scaleFactor - scaleFactorDecrease <= 0)
+					{
+						scaleFactorDecrease /= 10;
+					}
+					scaleFactor -= scaleFactorDecrease;
+				}
+				
+				if (scaleFactor != 1) {
+					scaledBmp= getResizedBitmap(bmp, scaleFactor);
+				}
+				ByteArrayOutputStream bmpStream = new ByteArrayOutputStream();
+				scaledBmp.compress(format, quality, bmpStream);
+				byte[] compressedByteArray = bmpStream.toByteArray();
+				currentDataSize = compressedByteArray.length;
+			}
+			scaledBmp.compress(format, quality, outStream);
+		}
+		
         private Bitmap getResizedBitmap(Bitmap bm, float factor) {
             int width = bm.getWidth();
             int height = bm.getHeight();

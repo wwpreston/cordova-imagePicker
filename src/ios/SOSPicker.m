@@ -24,6 +24,7 @@
 	self.width = [[options objectForKey:@"width"] integerValue];
 	self.height = [[options objectForKey:@"height"] integerValue];
 	self.quality = [[options objectForKey:@"quality"] integerValue];
+	self.filesize = [[options objectForKey:@"filesize"] integerValue];
 
 	// Create the an album controller and image picker
 	ELCAlbumPickerController *albumController = [[ELCAlbumPickerController alloc] init];
@@ -84,12 +85,39 @@
             }
             
             UIImage* image = [UIImage imageWithCGImage:imgRef scale:1.0f orientation:orientation];
+			CGSize currentImageSize = [image size];
             if (self.width == 0 && self.height == 0) {
                 data = UIImageJPEGRepresentation(image, self.quality/100.0f);
             } else {
                 UIImage* scaledImage = [self imageByScalingNotCroppingForSize:image toSize:targetSize];
+				currentImageSize = [scaledImage size];
                 data = UIImageJPEGRepresentation(scaledImage, self.quality/100.0f);
             }
+			
+			if (self.filesize > 0) {
+				float scaleFactor = 1.0;
+				float scaleFactorDecrease = 0.1;
+				NSInteger currentFilesize = [data length];
+				NSData* resizedImageData = nil;
+				while (currentFilesize > self.filesize) {
+					if (scaleFactor-scaleFactorDecrease <= 0)
+					{
+						scaleFactorDecrease /= 10.0;
+					}
+					scaleFactor -= scaleFactorDecrease;
+					// create image from data
+					UIImage* imageFromData = [UIImage imageWithData:data];
+					// re-scale image
+					CGSize resizedImageSize = CGSizeMake(currentImageSize.width * scaleFactor, currentImageSize.height * scaleFactor);
+					UIImage* scaledImage = [self imageByScalingNotCroppingForSize:imageFromData toSize:resizedImageSize];
+					// convert image to data
+					resizedImageData = UIImageJPEGRepresentation(scaledImage, self.quality/100.0f);
+					currentFilesize = [resizedImageData length];
+				}
+				if (resizedImageData != nil) {
+					data = resizedImageData;
+				}
+			}
             
             if (![data writeToFile:filePath options:NSAtomicWrite error:&err]) {
                 result = [CDVPluginResult resultWithStatus:CDVCommandStatus_IO_EXCEPTION messageAsString:[err localizedDescription]];

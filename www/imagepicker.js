@@ -20,6 +20,7 @@ var ImagePicker = function() {
 *		         image will be returned)
 *		.height - height to resize image to
 *		.quality - quality of resized image, defaults to 100
+*		.filesize - the maximum file size of the output, defaults to 0 (original size)
 */
 ImagePicker.prototype.getPictures = function(success, fail, options) {
 	if (!options) {
@@ -30,7 +31,8 @@ ImagePicker.prototype.getPictures = function(success, fail, options) {
 		maximumImagesCount: options.maximumImagesCount ? options.maximumImagesCount : 15,
 		width: options.width ? options.width : 0,
 		height: options.height ? options.height : 0,
-		quality: options.quality ? options.quality : 100
+		quality: options.quality ? options.quality : 100,
+		filesize: options.filesize ? options.filesize : 0
 	};
 
 	return cordova.exec(success, fail, "ImagePicker", "getPictures", [params]);
